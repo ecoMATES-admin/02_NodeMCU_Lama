@@ -156,15 +156,12 @@ void SM_Wifi() {
       //Note for future implementation: Thing Speak's 15 second upload limitation must be taken into account in the state machine
       if (DEBUG)
         Serial.println("SERIAL_FLUSH");
-      if (Serial.find('V')) {
-        Serial.println("V");
-        if (Serial.peek() == 'X') {
+      if (Serial.find('X')) {
           currentState = READ_VALUE1;
           if (DEBUG){
             Serial.println("SERIAL_FLUSH: sensor data input found");
           }
           break;
-        }
       }
       currentState = WAIT;
       break;
