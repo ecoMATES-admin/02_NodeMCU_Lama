@@ -18,6 +18,7 @@ int i = 0;
 char tempTank[6] = {0};
 char ph[6] = {0};
 char weight[6] = {0};
+char gas[6] = {0};
 
 
 
@@ -33,9 +34,9 @@ char pass[] = "71277402108590341747";   // your network password
   //-------------------------------------------//*/
 
 //----------- Channel Details -------------//
-unsigned long Channel_ID1 = 1595496; // Channel ID 
+unsigned long Channel_ID1 = 1595496; // Channel ID
 const int Field_number = 1; // Don't change
-const char * WriteAPIKey1 = "4E64G1XNYT42LQBR"; 
+const char * WriteAPIKey1 = "4E64G1XNYT42LQBR";
 
 // ----------------------------------------//
 
@@ -47,7 +48,7 @@ WiFiClient  client;
 
 // state machine
 enum State {INTERNET, WAIT, READ_VALUE1, GET_VALUE1, READ_VALUE2, GET_VALUE2, READ_VALUE3,
-            GET_VALUE3, UPLOAD_ALL, SERIAL_FLUSH
+            GET_VALUE3, READ_VALUE4, GET_VALUE4, UPLOAD_ALL, SERIAL_FLUSH
            };
 State currentState = WAIT;
 
@@ -137,7 +138,7 @@ void SM_Wifi() {
     case GET_VALUE3:
       if (Serial.available()) {
         if (Serial.peek() == 13) {
-          currentState = UPLOAD_ALL;
+          currentState = READ_VALUE4;
           i = 0;
           if (DEBUG) {
             Serial.print("VALUE 3: ");
@@ -152,16 +153,40 @@ void SM_Wifi() {
       }
       break;
 
+    case READ_VALUE4: // hum top
+      if (Serial.find("d")) {
+        currentState = GET_VALUE4;
+      }
+      break;
+
+    case GET_VALUE4:
+      if (Serial.available()) {
+        if (Serial.peek() == 13) {
+          currentState = UPLOAD_ALL;
+          i = 0;
+          if (DEBUG) {
+            Serial.print("VALUE 3: ");
+            Serial.println(gas);
+          }
+          break;
+        }
+        if (Serial.peek() != 10) {
+          gas[i] = Serial.read();
+          i++;
+        }
+      }
+      break;
+
     case SERIAL_FLUSH: //Function to distinguish between sensor data and tank capacity data AND (in a future implementation) to not loose any data if both data sets arrive at the same time
       //Note for future implementation: Thing Speak's 15 second upload limitation must be taken into account in the state machine
       if (DEBUG)
         Serial.println("SERIAL_FLUSH");
       if (Serial.find('X')) {
-          currentState = READ_VALUE1;
-          if (DEBUG){
-            Serial.println("SERIAL_FLUSH: sensor data input found");
-          }
-          break;
+        currentState = READ_VALUE1;
+        if (DEBUG) {
+          Serial.println("SERIAL_FLUSH: sensor data input found");
+        }
+        break;
       }
       currentState = WAIT;
       break;
@@ -177,7 +202,7 @@ void SM_Wifi() {
       if (DEBUG)
         Serial.println("WAIT");
       if (Serial.available()) {
-        if (DEBUG){
+        if (DEBUG) {
           Serial.println("Serial input available...");
         }
         currentState = INTERNET;
@@ -208,6 +233,7 @@ void upload_all() {
   ThingSpeak.setField(1, tempTank);
   ThingSpeak.setField(2, ph);
   ThingSpeak.setField(3, weight);
+  ThingSpeak.setField(4, gas);
 
 
   x = ThingSpeak.writeFields(Channel_ID1, WriteAPIKey1);
@@ -220,9 +246,10 @@ void upload_all() {
       Serial.println("Problem updating channel. HTTP error code " + String(x));
     }
   }
-  
-  
+
+
   memset(tempTank, 0, 6);
   memset(ph, 0, 6);
   memset(weight, 0, 6);
+  memset(gas, 0, 6);
 }
